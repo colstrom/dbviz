@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+
+require 'contracts'
+require 'facets'
+require 'graphviz'
+require 'sequel'
+require 'yaml'
+
+class DBViz
+  include ::Contracts::Core
+  include ::Contracts::Builtin
+
+  Contract None => String
+  def config_path
+    @config_path ||= ARGV.first || ENV['DBVIZ_CONFIG'] || File.expand_path('~/.config/dbviz.yaml')
+  end
+
+  Contract None => HashOf[Symbol, Or[String, Num]]
+  def config
+    @config ||= YAML.load_file(config_path).symbolize_keys
+  end
+
+  Contract None => RespondTo[:tables, :foreign_key_list]
+  def db
+    @db ||= Sequel.connect(config)
+  end
+
+  Contract None => ArrayOf[Symbol]
+  def tables
+    @tables ||= db.tables
+  end
+
+  Contract None => HashOf[Symbol, ArrayOf[HashOf[Symbol, Or[Symbol, Array, Bool]]]]
+  def foreign_keys
+    @foreign_keys ||= tables
+                      .map { |t| { t => db.foreign_key_list(t) } }
+                      .reduce(&:merge)
+                      .reject { |_, v| v.empty? }
+  end
+
+  Contract None => HashOf[Symbol, ArrayOf[Symbol]]
+  def columns
+    @columns ||= tables
+                 .map { |t| { t => db[t].columns } }
+                 .reduce(&:merge)
+  end
+
+  def interesting
+    columns.select { |k, _| foreign_keys.keys.include? k }
+  end
+end
+
+GraphViz.new(:G, type: :digraph, rankdir: 'LR').tap do |graph|
+  DBViz.new.tap do |db|
+    db.interesting.each do |table, columns|
+      table.to_s.tap do |table|
+        graph.add_node table
+        columns
+          .map { |column| "#{table}.#{column}" }
+          .each { |column| graph.add_node column }
+          .each { |column| graph.add_edges table, column }
+      end
+    end
+
+    db.foreign_keys.each do |table, relations|
+      table.to_s.tap do |table|
+        relations.each do |relation|
+          relation[:columns]
+            .map { |c| "#{table}.#{c}" }
+            .product(relation[:key]
+                      .map { |k| "#{relation[:table]}.#{k}" })
+            .each { |r| graph.add_edges(*r) }
+        end
+      end
+    end
+  end
+  puts graph.to_s
+end
