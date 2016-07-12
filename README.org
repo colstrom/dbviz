@@ -1,0 +1,52 @@
+#+TITLE: dbviz - A tool for visualizing database relations
+#+LATEX: \pagebreak
+
+* Overview
+
+  ~dbviz~ is a tool to visualize relations in a database. Point it at your DB,
+  and it will produce a graph on =STDOUT= in a format suitable for processing or
+  rendering with =graphviz=.
+
+* Installation
+
+  #+BEGIN_SRC shell
+    gem install dbviz
+  #+END_SRC
+
+* Configuration
+
+  ~dbviz~ needs to know which database to visualize. Unless told otherwise, it
+  looks for a configuration file at =~/.config/dbviz.yaml=. To tell it
+  otherwise, either define =DBVIZ_CONFIG= in the environment, or provide it as
+  the first argument to ~dbviz~.
+
+  Environment is recommended, but using arguments is supported for convenience
+  when working with multiple configurations.
+
+** Example
+
+   #+BEGIN_SRC yaml
+     ---
+     adapter: postgres
+     database: my-awesome-database
+     host: localhost
+     password: MyVerySecurePasswordStoredUnencryptedOnDisk
+     port: 5432
+     user: me
+   #+END_SRC
+
+* Usage
+
+  The following command will produce a visualization saved at =db.png=.
+
+  #+BEGIN_SRC shell
+    dbviz | dot -Tpng -o db.png
+  #+END_SRC
+
+* License
+
+  ~dbviz~ is available under the [[https://tldrlegal.com/license/mit-license][MIT License]]. See ~LICENSE.txt~ for the full text.
+
+* Contributors
+
+  - [[https://colstrom.github.io/][Chris Olstrom]] | [[mailto:chris@olstrom.com][e-mail]] | [[https://twitter.com/ChrisOlstrom][Twitter]]
